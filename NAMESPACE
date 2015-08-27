@@ -1,0 +1,14 @@
+import("ltsa")
+importFrom("gsl", "hyperg_2F1", "lnpoch")
+importFrom("stats", "ARMAacf", "convolve", "fft", "rnorm", "toeplitz",
+    "nextn", "optim", "spec.pgram", "var")
+
+export("artfima",
+"InvertibleQ",
+"sdfartfima",
+"tacvfARTFIMA",
+"artSim",
+"print.artfima"
+)
+
+S3method("print", "artfima")
