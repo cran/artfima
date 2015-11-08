@@ -1,7 +1,9 @@
 artfima <-
 function(z, glp=c("ARTFIMA", "ARFIMA", "ARIMA"), armaOrder=c(0,0,0), 
                    constant=TRUE, seQ=TRUE, likAlg=c("Exact","Whittle"), 
-                   blueQ=FALSE) {
+                   blueQ=FALSE, fixd=NULL) {
+  #option fixd!=NULL only for ARTFIMA
+  #
   alg <- 1 # default optimization is "L-BFGS-B"
   glp <- match.arg(glp)
   likAlg <- match.arg(likAlg)
@@ -9,7 +11,13 @@ function(z, glp=c("ARTFIMA", "ARFIMA", "ARIMA"), armaOrder=c(0,0,0),
   d0 <- armaOrder[2]
   q <- armaOrder[3]
   glpOrder <-switch(glp, "ARTFIMA"=2, "ARFIMA"=1, "ARIMA"=0)
-  stopifnot(all(armaOrder>=0)) 
+  #fixd: must be null or numeric <2 and >=-0.5
+  stopifnot(is.null(fixd)||(is.numeric(fixd)&&fixd<=2&&fixd>=-0.5)) 
+  stopifnot(all(armaOrder>=0))
+  stopifnot(!(is.numeric(fixd)&&glpOrder!=2))
+  #number of additional parameters, 0 for ARMA, 1 for ARFIMA, 2 for ARTFIMA
+  #   except when fixd is not NULL then it is 1
+  glpAdd <- glpOrder-ifelse(is.null(fixd), 0, 1)
   is.wholenumber <- function(x) abs(x - round(x)) < .Machine$double.eps^0.5
   stopifnot(is.wholenumber(p), is.wholenumber(d0), is.wholenumber(q))
 #
@@ -19,7 +27,7 @@ function(z, glp=c("ARTFIMA", "ARFIMA", "ARIMA"), armaOrder=c(0,0,0),
   w <- w-mnw
   n <- length(w)
 #initialization
-  nbeta <- p+q+glpOrder
+  nbeta <- p+q+glpAdd
   binit <- numeric(nbeta)
 #Whittle method is fast because this is only done once
   if (likAlg=="Whittle")
@@ -41,12 +49,12 @@ function(z, glp=c("ARTFIMA", "ARFIMA", "ARIMA"), armaOrder=c(0,0,0),
     count <<- count+1
     if (glpOrder==2) {
       lambda <- beta[1]
-      d <- beta[2]
+      d <- ifelse(is.null(fixd), beta[2], fixd) #fixd
     } else {
       if (glpOrder==1) d <- beta[1]
-        }
-    if(p>0) phi <- PacfToAR(beta[(1+glpOrder):(p+glpOrder)])
-    if(q>0) theta <- PacfToAR(beta[(p+glpOrder+1):(p+q+glpOrder)]) 
+    }
+    if(p>0) phi <- PacfToAR(beta[(1+glpAdd):(p+glpAdd)])
+    if(q>0) theta <- PacfToAR(beta[(p+glpAdd+1):(p+q+glpAdd)]) 
     if (likAlg=="Exact") {
       r <- tacvfARTFIMA(d=d, lambda=lambda, phi = phi, theta = theta, 
                         maxlag = n-1) 
@@ -73,8 +81,8 @@ function(z, glp=c("ARTFIMA", "ARFIMA", "ARIMA"), armaOrder=c(0,0,0),
 #lower and upper limits with "L-BFGS-B"
   lambdaLo <- 0.001
   lambdaHi <- 3
-  dHi <- 2
-  dfHi <- 0.49
+  dHi <- 2 #ARTFIMA limit
+  dfHi <- 0.49 #ARFIMA limit
   if (glp=="ARTFIMA") {
     blo<- c(lambdaLo, -dHi, rep(-0.99,p+q))
     bhi<- c(lambdaHi, dHi,  rep(0.99,p+q))
@@ -95,14 +103,20 @@ function(z, glp=c("ARTFIMA", "ARFIMA", "ARIMA"), armaOrder=c(0,0,0),
   while(etol> 1e-06 && iter<maxIter){
     iter<-iter+1
 #trace=6 for full output
-    ans<-optim(par=binit, fn=Entropy, method="L-BFGS-B",
-         lower=blo, upper=bhi, control=list(trace=0), hessian=seQ)
-    if(ans$convergence != 0) {#convergence problem. Use Nelder-Mead with penalty function
-      alg<-2
-      ans<-optim(par=binit, fn=Entropy, method="Nelder-Mead", hessian=seQ)
-      if(ans$convergence != 0) {#convergence problem. Use SANN with penalty function
-        alg<-3
-       ans<-optim(par=binit, fn=Entropy, method="SANN", hessian=seQ)
+    if (length(binit)==1 && is.numeric(fixd)) {#ARTFIMA with only lambda
+      ans<-optim(par=binit, fn=Entropy, method="Brent", upper=lambdaHi, 
+                 lower=lambdaLo, control=list(trace=0), hessian=seQ)
+      if(ans$convergence != 0) warning(paste("convergence =", ans$convergence)) 
+      } else {
+      ans<-optim(par=binit, fn=Entropy, method="L-BFGS-B",
+                 lower=blo, upper=bhi, control=list(trace=0), hessian=seQ)
+      if(ans$convergence != 0) {#convergence problem. Use Nelder-Mead with penalty function
+        alg<-2
+        ans<-optim(par=binit, fn=Entropy, method="NelderMead", hessian=seQ)
+        if(ans$convergence != 0) {#convergence problem. Use SANN with penalty function
+          alg<-3
+          ans<-optim(par=binit, fn=Entropy, method="SANN", hessian=seQ)
+        }
       }
     }
     negLL <- ans$value
@@ -113,13 +127,13 @@ function(z, glp=c("ARTFIMA", "ARFIMA", "ARIMA"), armaOrder=c(0,0,0),
     if (glpOrder > 0) dHat <- bHat[glpOrder]
     if (glpOrder == 1 && abs(dHat) > dfHi) onBoundary <- TRUE
     if (glpOrder==2) {
-      dHat <- bHat[glpOrder]
+      dHat <- ifelse(is.null(fixd), bHat[glpOrder], fixd)
       lambdaHat <-bHat[1]
       if (lambdaHat>=lambdaHi || lambdaHat <= lambdaLo) onBoundary <- TRUE
       if (abs(dHat) >= dHi) onBoundary <- TRUE
     }
-    if (p > 0) phiHat <- PacfToAR(bHat[(1+glpOrder):(p+glpOrder)])
-    if (q > 0) thetaHat <- PacfToAR(bHat[(p+1+glpOrder):(p+q+glpOrder)])
+    if (p > 0) phiHat <- PacfToAR(bHat[(1+glpAdd):(p+glpAdd)])
+    if (q > 0) thetaHat <- PacfToAR(bHat[(p+1+glpAdd):(p+q+glpAdd)])
     rHat <- tacvfARTFIMA(d=dHat, lambda=lambdaHat, 
                          phi = phiHat, theta = thetaHat, maxlag = n-1)
     if(maxIter > 1) {#if MaxIt==0, sample mean is used
@@ -141,6 +155,7 @@ function(z, glp=c("ARTFIMA", "ARFIMA", "ARIMA"), armaOrder=c(0,0,0),
       } else {#either not requested or Whittle used
           sebHat <- rep(NA,length(bHat))
       }
+  if (is.numeric(fixd)) sebHat <- c(sebHat[1],0,sebHat[-1])
   rhoHat <- rHat[-1]/rHat[1]
   seMean <- sqrt(var(w)/n*(1+2*sum(1-(1:(n-1))/n*rhoHat^2))/n)
   constantHat <- mnw+meanMLE
@@ -153,8 +168,9 @@ function(z, glp=c("ARTFIMA", "ARFIMA", "ARIMA"), armaOrder=c(0,0,0),
             constant=constantHat, seMean=seMean, se=sebHat, n=n, 
             sigmaSq=sigmaSq, snr=snr, likAlg=likAlg, convergence=convergence, 
             blueQ=blueQ, LL=LL, algorithm=alg, constantQ=constant, glp=glp, 
-            armaOrder=armaOrder, glpOrder=glpOrder, tacvf=rHat, res=res,
-            nullModelLogLik=nullModelLoglikelihood, onBoundary=onBoundary)
+            armaOrder=armaOrder, glpOrder=glpOrder, fixd=fixd, glpAdd=glpAdd,
+            tacvf=rHat, res=res, nullModelLogLik=nullModelLoglikelihood, 
+            onBoundary=onBoundary)
  class(out) <- "artfima"
  out
 }

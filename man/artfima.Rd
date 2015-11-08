@@ -9,7 +9,8 @@ ARIMA and ARFIMA. Exact MLE and Whittle approximate MLE are implemented.
 }
 \usage{
 artfima(z, glp = c("ARTFIMA", "ARFIMA", "ARIMA"), armaOrder = c(0, 0, 0), 
-  constant = TRUE, seQ = TRUE, likAlg = c("Exact", "Whittle"), blueQ = FALSE)
+  constant = TRUE, seQ = TRUE, likAlg = c("Exact", "Whittle"), blueQ = FALSE, 
+  fixd = NULL)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -24,6 +25,10 @@ artfima(z, glp = c("ARTFIMA", "ARFIMA", "ARIMA"), armaOrder = c(0, 0, 0),
   \item{likAlg}{either "Exact" or "Whittle"}
   \item{blueQ}{TRUE, exact MLE for the constant parameter is done. Otherwise
   the sample mean is used.}
+  \item{fixd}{only used with ARTFIMA, default setting fixd=NULL means the MLE
+  for the parameter d is obtained other if fixed=d0, where d0 is a numeric
+  value in the interval (-2, 2) the d parameter in ARTFIMA is fixed at this 
+  value while the remaining parameters are estimated.}
 }
 
 \details{TBA}
@@ -38,6 +43,12 @@ print method.
 
 \examples{
 artfima(Ogden, likAlg = "Whittle")
+#
+set.seed(323277)
+d0 <- 5/6
+z <- artSim(n=1000, lambda=0.05, d=5/6)
+artfima(z, fixd=d0) #constrained, exact
+artfima(z, likAlg="Whittle", fixd=d0) #constrained, Whittle
 }
 
 \keyword{ts}

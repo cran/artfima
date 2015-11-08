@@ -1,12 +1,13 @@
-8854fa976046724db86b6a5231769d61 *DESCRIPTION
+24dd1f3d61a227fdb5d5eea595077f83 *DESCRIPTION
 b13043c688480da7638be7ef8dd7eb85 *NAMESPACE
+7e87888563b24b0a05d3318fa0217a2f *NEWS
 e559c6dd678c8c4c045cee9be76294c8 *R/InvertibleQ.R
 d45595fe53e009342dcb194a855fdcb2 *R/artSim.R
-0051eaa6692b96fdaa35dfa7f908430e *R/artfima.R
+a3d65b3498516333c1c5d554f004eee9 *R/artfima.R
 c270bddd63295b08a2c75867c47cd100 *R/print.artfima.R
 f60600e954448d0a4286a571e149eae8 *R/sdfartfima.R
 6c74fad1429bcadb758dd6b1033e2c9a *R/tacvfARTFIMA.R
-5ba33939468a88fd7fc60bf3813cb0e4 *build/partial.rdb
+adbe8bb8de5b1e3560b44a19b26f7796 *build/partial.rdb
 fb0826a87b83300f0c1154338794a214 *data/Huron.rda
 34f1e927378b43311203e735f2450ed7 *data/NileMin.rda
 6c8f4bd4d195bd6b6ed54fb40f46be79 *data/Ogden.rda
@@ -18,7 +19,7 @@ ae3c86f23263ff85d6ac4ee30b770bbd *data/SeriesA.rda
 e62f140291d48faf31a27d56fece6715 *man/SeriesA.Rd
 07f450393c4784eee70f78da6688e449 *man/artSim.Rd
 64d0b9e998b9a3fb4a8f0f4ddd1862b7 *man/artfima-package.Rd
-c4138ca598439329f4f1737a019023a0 *man/artfima.Rd
+b3c23347bd649b110b6b61dcffdf05d6 *man/artfima.Rd
 598c9687eafca06d14be4810065f9643 *man/print.artfima.Rd
 0f6e7b1c9facd170709192563cda136a *man/sdfartfima.Rd
 a1b171e9ab1bd7cf8e14bda4a747c27f *man/tacvfARTFIMA.Rd
