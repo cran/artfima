@@ -28,7 +28,7 @@ captured by the model.
 \seealso{\code{\link{artfima}}}
 
 \examples{
-artfima(Ogden, likAlg = "Whittle")
+artfima(rnorm(100))
 }
 
 \keyword{ts}

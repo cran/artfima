@@ -1,9 +1,9 @@
 print.artfima <-
 function(x, ...){
   glp <- x$glp
-  p <- x$armaOrder[1]
-  d <- x$armaOrder[2]
-  q <- x$armaOrder[3]
+  p <- x$arimaOrder[1]
+  d <- x$arimaOrder[2]
+  q <- x$arimaOrder[3]
   est <- numeric(0)
   estT <- character(0)
   glpOrder <- x$glpOrder
@@ -35,15 +35,12 @@ function(x, ...){
   cat(paste0(whichModel, ", MLE Algorithm: ", x$likAlg),fill=TRUE)
   cat(paste0("snr = ", round(x$snr,3), ", sigmaSq = ", 
              x$sigmaSq), fill=TRUE)
-  if (x$convergence!=0) 
-    cat(paste0("warning: problem with convergence\nconvergence=",
+  if (x$convergence!=0) {
+    cat(paste0("Note: possible problem with convergence\n  convergence=",
                x$convergence), fill=TRUE)
-  if (x$alg!=1) { #if not default (L-BFGS-B) let us know
-  whichAlg <- switch(x$alg,
-           "1"="L-BFGS-B",
-           "2"="Nelder-Mead algorithm",
-           "3"="Simulated Annealing (SAAN) algorithm")
-    cat("Optimization algorithm:", whichAlg, fill=TRUE)
+    cat(paste("Algorithm used: ", x$algorithm), fill=TRUE)
+    if (!is.null(x$message)) 
+      cat(paste0("message =", x$message), fill=TRUE)
   }
   k <- length(est)
   LL <- x$LL
@@ -54,6 +51,6 @@ function(x, ...){
   if (x$onBoundary) {
     cat("Warning: estimates converged to boundary!", fill=TRUE)
   }
-  print(matrix(c(est, ifelse(x$constantQ,x$seMean,0), x$se), ncol=2, 
+  print(matrix(c(est, x$seMean, x$se), ncol=2, 
          dimnames=list(estT, c("est.", "se(est.)"))))   
 }

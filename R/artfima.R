@@ -1,19 +1,23 @@
 artfima <-
-function(z, glp=c("ARTFIMA", "ARFIMA", "ARIMA"), armaOrder=c(0,0,0), 
-                   constant=TRUE, seQ=TRUE, likAlg=c("Exact","Whittle"), 
-                   blueQ=FALSE, fixd=NULL) {
+function(z, glp=c("ARTFIMA", "ARFIMA", "ARIMA"), arimaOrder=c(0,0,0), 
+         constant=TRUE, likAlg=c("Whittle","exact"), 
+         blueQ=FALSE, fixd=NULL, 
+         optimMethod=c("LBFGSB","CG","NelderMead")) {
   #option fixd!=NULL only for ARTFIMA
   #
-  alg <- 1 # default optimization is "L-BFGS-B"
+  stopifnot(is.numeric(z) && (is.ts(z) || is.vector(z)))
+  stopifnot(length(arimaOrder==3) && is.numeric(arimaOrder) 
+            && all(arimaOrder>=0))
   glp <- match.arg(glp)
   likAlg <- match.arg(likAlg)
-  p <- armaOrder[1]
-  d0 <- armaOrder[2]
-  q <- armaOrder[3]
+  optimMethod <- match.arg(optimMethod)
+  p <- arimaOrder[1]
+  d0 <- arimaOrder[2]
+  q <- arimaOrder[3]
   glpOrder <-switch(glp, "ARTFIMA"=2, "ARFIMA"=1, "ARIMA"=0)
   #fixd: must be null or numeric <2 and >=-0.5
   stopifnot(is.null(fixd)||(is.numeric(fixd)&&fixd<=2&&fixd>=-0.5)) 
-  stopifnot(all(armaOrder>=0))
+  stopifnot(all(arimaOrder>=0))
   stopifnot(!(is.numeric(fixd)&&glpOrder!=2))
   #number of additional parameters, 0 for ARMA, 1 for ARFIMA, 2 for ARTFIMA
   #   except when fixd is not NULL then it is 1
@@ -21,20 +25,27 @@ function(z, glp=c("ARTFIMA", "ARFIMA", "ARIMA"), armaOrder=c(0,0,0),
   is.wholenumber <- function(x) abs(x - round(x)) < .Machine$double.eps^0.5
   stopifnot(is.wholenumber(p), is.wholenumber(d0), is.wholenumber(q))
 #
-  w <- if(d0>0) diff(z, differences=d0) else z
-  if(constant) mnw <- mean(w) else mnw<-0
-  varw <- var(w)
+  w <- z
+  mnw <- mean(w)
+  if(d0 > 0) {
+    w <- diff(z, differences=d0)
+    }
+  if(!constant) {
+    mnw <- 0
+  }
   w <- w-mnw
+  varw <- var(w)
   n <- length(w)
 #initialization
-  nbeta <- p+q+glpAdd
+  nbeta <- p+q+glpAdd #adjusted for fixd
   binit <- numeric(nbeta)
 #Whittle method is fast because this is only done once
-  if (likAlg=="Whittle")
-    Ip <- (spec.pgram(w, fast=FALSE, detrend=FALSE, plot=FALSE, taper=0)$spec)/(2*pi)  
+  if (likAlg=="Whittle") {
+    Ip <- (spec.pgram(w, fast=FALSE, detrend=FALSE, plot=FALSE, taper=0)$spec)/(2*pi)
+  }
   nullModelLoglikelihood <- (-n/2)*log(sum(w^2)/n)
   entropyPenalty <-  switch(likAlg,
-      Exact=-nullModelLoglikelihood,
+      exact=-nullModelLoglikelihood,
       Whittle=sum(w^2)
   )
   entropyPenalty <- entropyPenalty+2*abs(entropyPenalty)
@@ -55,7 +66,7 @@ function(z, glp=c("ARTFIMA", "ARFIMA", "ARIMA"), armaOrder=c(0,0,0),
     }
     if(p>0) phi <- PacfToAR(beta[(1+glpAdd):(p+glpAdd)])
     if(q>0) theta <- PacfToAR(beta[(p+glpAdd+1):(p+q+glpAdd)]) 
-    if (likAlg=="Exact") {
+    if (likAlg=="exact") {
       r <- tacvfARTFIMA(d=d, lambda=lambda, phi = phi, theta = theta, 
                         maxlag = n-1) 
 #needed in some cases, eg. NileMin with p=1, q=3, glp="FGN"
@@ -69,19 +80,21 @@ function(z, glp=c("ARTFIMA", "ARFIMA", "ARIMA"), armaOrder=c(0,0,0),
       fp <- sdfartfima(n=n, d=d, lambda=lambda, phi=phi, theta=theta)
       negLL <- 2*mean(Ip/fp)
     }
+#
+#debugging...
 #cat("\n ***********iter = ", iter, fill=TRUE)
 #cat("count = ", count, fill=TRUE)
 #cat("negLL=", negLL, fill=TRUE)
 #cat("beta=",beta,fill=TRUE)
 #cat("r[1:10] = ", r[1:10], fill=TRUE)
 #cat("w[1:10] = ", w[1:10], fill=TRUE)
-  negLL
-  }#end Entropy
+    negLL
+  }#end Entropy()
 #
 #lower and upper limits with "L-BFGS-B"
-  lambdaLo <- 0.001
-  lambdaHi <- 3
-  dHi <- 2 #ARTFIMA limit
+  lambdaLo <- 0.0001
+  lambdaHi <- 10
+  dHi <- 10 #ARTFIMA limit
   dfHi <- 0.49 #ARFIMA limit
   if (glp=="ARTFIMA") {
     blo<- c(lambdaLo, -dHi, rep(-0.99,p+q))
@@ -94,83 +107,84 @@ function(z, glp=c("ARTFIMA", "ARFIMA", "ARIMA"), armaOrder=c(0,0,0),
         }
       bhi <- -blo
   }
-  
-#while mean not converged############################################################ 
-  w0 <- w
-  etol <- maxIter <- 1
-  if(blueQ) maxIter <- 5
-  iter <- meanMLE <- 0
-  while(etol> 1e-06 && iter<maxIter){
-    iter<-iter+1
 #trace=6 for full output
-    if (length(binit)==1 && is.numeric(fixd)) {#ARTFIMA with only lambda
-      ans<-optim(par=binit, fn=Entropy, method="Brent", upper=lambdaHi, 
-                 lower=lambdaLo, control=list(trace=0), hessian=seQ)
-      if(ans$convergence != 0) warning(paste("convergence =", ans$convergence)) 
-      } else {
-      ans<-optim(par=binit, fn=Entropy, method="L-BFGS-B",
-                 lower=blo, upper=bhi, control=list(trace=0), hessian=seQ)
-      if(ans$convergence != 0) {#convergence problem. Use Nelder-Mead with penalty function
-        alg<-2
-        ans<-optim(par=binit, fn=Entropy, method="NelderMead", hessian=seQ)
-        if(ans$convergence != 0) {#convergence problem. Use SANN with penalty function
-          alg<-3
-          ans<-optim(par=binit, fn=Entropy, method="SANN", hessian=seQ)
-        }
+  trace <- 0
+#Brent when only 1 parameter
+  if (length(binit)==1 && is.numeric(fixd)) {
+    ans<-optim(par=binit, fn=Entropy, method="Brent", upper=lambdaHi, 
+               lower=lambdaLo, control=list(trace=trace), hessian=TRUE)
+    Alg <- "Brent"
+  } 
+    else {#GiantELSE
+      Alg <- optimMethod
+      ans <- switch(optimMethod, 
+        CG = optim(par=binit, fn=Entropy, method="CG",
+                    control=list(trace=trace, maxit=500), hessian=TRUE),
+        LBFGSB = optim(par=binit, fn=Entropy, method="L-BFGS-B",
+                 lower=blo, upper=bhi, control=list(trace=trace, maxit=500), 
+                 hessian=TRUE),
+        NelderMead = optim(par=binit, fn=Entropy, method="Nelder-Mead",
+                       control=list(trace=trace, maxit=500), 
+                       hessian=TRUE)
+        )#end switch 
+      }#endGiantELSE
+      negLL <- ans$value
+      bHat <- ans$par
+      lambdaHat <- dHat <- phiHat <- thetaHat <- numeric(0)
+      onBoundary <- FALSE
+      if (glpOrder > 0) dHat <- bHat[glpOrder]
+      if (glpOrder == 1 && abs(dHat) > dfHi) onBoundary <- TRUE
+      if (glpOrder==2) {
+        dHat <- ifelse(is.null(fixd), bHat[glpOrder], fixd)
+        lambdaHat <-bHat[1]
+        if (lambdaHat>=lambdaHi || lambdaHat <= lambdaLo) onBoundary <- TRUE
+        if (abs(dHat) >= dHi) onBoundary <- TRUE
       }
-    }
-    negLL <- ans$value
-    bHat <- ans$par
-    binit <- bHat
-    lambdaHat <- dHat <- phiHat <- thetaHat <- numeric(0)
-    onBoundary <- FALSE
-    if (glpOrder > 0) dHat <- bHat[glpOrder]
-    if (glpOrder == 1 && abs(dHat) > dfHi) onBoundary <- TRUE
-    if (glpOrder==2) {
-      dHat <- ifelse(is.null(fixd), bHat[glpOrder], fixd)
-      lambdaHat <-bHat[1]
-      if (lambdaHat>=lambdaHi || lambdaHat <= lambdaLo) onBoundary <- TRUE
-      if (abs(dHat) >= dHi) onBoundary <- TRUE
-    }
     if (p > 0) phiHat <- PacfToAR(bHat[(1+glpAdd):(p+glpAdd)])
     if (q > 0) thetaHat <- PacfToAR(bHat[(p+1+glpAdd):(p+q+glpAdd)])
     rHat <- tacvfARTFIMA(d=dHat, lambda=lambdaHat, 
                          phi = phiHat, theta = thetaHat, maxlag = n-1)
-    if(maxIter > 1) {#if MaxIt==0, sample mean is used
-      meanMLEPrev <- meanMLE
-      meanMLE <- TrenchMean(rHat, w0)
-      w <- w0-meanMLE
-      etol <- abs(meanMLE-meanMLEPrev)/(abs(meanMLE)+0.01)
+    meanMLE <- 0
+    if (blueQ) {
+      meanMLE <- TrenchMean(rHat, w)
+      w <- w-meanMLE
     }
-  }
   convergence <- ans$convergence
 #end while###########################################################################  
 #since Entropy is used, Hessian is pd
-  if(seQ&&likAlg=="Exact") {
-    Hinv<-try(solve(ans$hessian),silent=TRUE)
-    if(!all(is.numeric(Hinv))) Hinv <- NA
-    if(!any(is.na(Hinv))){
-      sebHat <- suppressWarnings(sqrt(diag(Hinv)))} else {
-          sebHat<-rep(NA,length(bHat))}
-      } else {#either not requested or Whittle used
-          sebHat <- rep(NA,length(bHat))
-      }
-  if (is.numeric(fixd)) sebHat <- c(sebHat[1],0,sebHat[-1])
+  Hinv<-try(solve(ans$hessian), silent=TRUE)
+  if(!all(is.numeric(Hinv))) Hinv <- matrix(NA, nrow=nbeta, ncol=nbeta)
+  if(!any(is.na(Hinv))){ #next square-root diagnonal elements
+    sebHat <- suppressWarnings(sqrt(diag(Hinv)))
+    } else {
+      sebHat<-rep(NA, nbeta)
+    }
+  if (is.numeric(fixd)) sebHat <- c(sebHat[1],0,sebHat[-1])    
   rhoHat <- rHat[-1]/rHat[1]
   seMean <- sqrt(var(w)/n*(1+2*sum(1-(1:(n-1))/n*rhoHat^2))/n)
   constantHat <- mnw+meanMLE
-  ansExact <- exactLoglikelihood(rHat, w)
-  LL <- ansExact$LL
-  sigmaSq <- ansExact$sigmaSq
+  ansEx <- try(exactLoglikelihood(rHat, w), silent=TRUE)
+  if(class(ansEx)!="try-error") { #possible converged but still problem
+    LL <- ansEx$LL
+    sigmaSq <- ansEx$sigmaSq
+  } else {
+    LL <- NA
+    sigmaSq <- innovationVariance(w)
+  }
+  if (is.numeric(sebHat)&&likAlg=="Whittle") {
+    sebHat <- sqrt(sigmaSq)*sebHat/sqrt(n)
+  }
+#
   snr <- (varw-sigmaSq)/sigmaSq
   res <- DLResiduals(rHat, w)
   out<-list(dHat=dHat, lambdaHat=lambdaHat, phiHat=phiHat, thetaHat=thetaHat, 
             constant=constantHat, seMean=seMean, se=sebHat, n=n, 
             sigmaSq=sigmaSq, snr=snr, likAlg=likAlg, convergence=convergence, 
-            blueQ=blueQ, LL=LL, algorithm=alg, constantQ=constant, glp=glp, 
-            armaOrder=armaOrder, glpOrder=glpOrder, fixd=fixd, glpAdd=glpAdd,
+            blueQ=blueQ, LL=LL, constantQ=constant, glp=glp, 
+            arimaOrder=arimaOrder, glpOrder=glpOrder, fixd=fixd, glpAdd=glpAdd,
             tacvf=rHat, res=res, nullModelLogLik=nullModelLoglikelihood, 
-            onBoundary=onBoundary)
+            algorithm=Alg, 
+            onBoundary=onBoundary, message=ans$message)
  class(out) <- "artfima"
  out
 }

@@ -26,5 +26,5 @@ Maintainer: \packageMaintainer{artfima}
 }
 
 \examples{
-artfima(Ogden, likAlg = "Whittle")
+artfima(rnorm(100))
 }

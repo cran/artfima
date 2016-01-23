@@ -1,5 +1,6 @@
 #Source: artSim.R
-artSim <- function(obj=NULL, n=100, d=0, lambda=0, phi=numeric(0), theta=numeric(0), mean=0, sigma2=1) {
+artSim <- function(obj=NULL, n=100, d=0, lambda=0, phi=numeric(0), 
+                   theta=numeric(0), mean=0, sigma2=1) {
     if (identical(class(obj),"ARTFIMA")) {
       d <- obj$dHat
       lambda <- obj$lambdaHat

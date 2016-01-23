@@ -1,7 +1,11 @@
-CHANGES IN 'artfima' VERSION 1.02 (2015-11-7)
+CHANGES IN 'artfima' VERSION 1.1 (2015-11-7)
     o    can hold d parameter fixed in ARTFIMA model
-
-
-
-
-
+CHANGES IN 'artfima' VERSION 1.2 (2012-01-21)
+    o    "Whittle" is default estimation algorithm
+    o    se's for estimates computed with Whittle method
+    o    new functions: informationMatrixARTFIMA(), seARTFIMA()
+    o    added dataset SB32
+    o    bugs fixed with sdfarfima()
+    o    can choose optimization to be used with optim() method
+    o    documentation fix for sdfartfima()
+    o    simulation investigation report included

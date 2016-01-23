@@ -59,7 +59,8 @@ sdfarfima<- function(n, d=0, phi=numeric(0), theta=numeric(0)) {
   }
   den <- as.vector(C*C+S*S)
   s1 <- num/den
-  s2 <- ifelse(identical(length(d)==0,TRUE) ||identical(d==0,TRUE) , 1, 
-               (2*sin(lams/2))^(-2*d))
+  if (!(identical(length(d)==0,TRUE) ||identical(d==0,TRUE))) {
+    s2 <- (2*sin(lams/2))^(-2*d)
+  }
   s1*s2
 }
