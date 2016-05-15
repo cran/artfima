@@ -6,16 +6,16 @@
 \description{
 Displays the fitted model.
 The exact log-likelihood, AIC and BIC are shown.
-The signal-to-noise ratio (snr) is defined the (sample variance minus the estimated
-innovation variance) divided by the innovation variance. Similar to the coefficient
-of determination in regression, it indicates how much of the randomness is
-captured by the model.
+The signal-to-noise ratio (snr) is defined the (sample variance minus the 
+estimated innovation variance) divided by the innovation variance. 
+Similar to the coefficient of determination in regression, 
+it indicates how much of the randomness is captured by the model.
 }
 
 \usage{\method{print}{artfima}(x, ...)}
 
 \arguments{
-  \item{x}{ object of class "FitFGN" }
+  \item{x}{ object of class "artfima" }
   \item{...}{ optional arguments }
 }
 

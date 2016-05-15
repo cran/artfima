@@ -1,6 +1,6 @@
 CHANGES IN 'artfima' VERSION 1.1 (2015-11-7)
     o    can hold d parameter fixed in ARTFIMA model
-CHANGES IN 'artfima' VERSION 1.2 (2012-01-21)
+CHANGES IN 'artfima' VERSION 1.2 (2015-01-21)
     o    "Whittle" is default estimation algorithm
     o    se's for estimates computed with Whittle method
     o    new functions: informationMatrixARTFIMA(), seARTFIMA()
@@ -9,3 +9,11 @@ CHANGES IN 'artfima' VERSION 1.2 (2012-01-21)
     o    can choose optimization to be used with optim() method
     o    documentation fix for sdfartfima()
     o    simulation investigation report included
+CHANGES IN 'artfima' VERSION 1.3 (2016-05-13)
+    o    many code improvements to artfima()
+    o    retitled and improved function artfimaSDF()
+    o    plot() method added for class "artfima", plot.artfima()
+    o    bestModels() exhaustive enumerative search best AIC/BIC model within
+            the entire range of models (ARTFIMA, ARFIMA, ARIMA)
+    o    tseg() simulates interesting example time series
+    o    Periodogram() scaling factors as in artfimaSDF()

@@ -30,7 +30,7 @@ lsdf <- log((ans$spec)/(2*pi))
 lfre <- log(ans$freq) 
 plot(lfre, lsdf, xlab="log frequency", ylab="log spectral density", 
      col=gray(0, 0.7))
-sdf <- sdfartfima(n=length(SB32), d=5/6, lambda=0.045)
+sdf <- artfimaSDF(n=length(SB32), d=5/6, lambda=0.045)
 lines(lfre, log(sdf), col="red", lwd=3)
 }
 \keyword{datasets}
