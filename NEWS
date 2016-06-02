@@ -17,3 +17,8 @@ CHANGES IN 'artfima' VERSION 1.3 (2016-05-13)
             the entire range of models (ARTFIMA, ARFIMA, ARIMA)
     o    tseg() simulates interesting example time series
     o    Periodogram() scaling factors as in artfimaSDF()
+CHANGES IN 'artfima' VERSION 1.4 (2016-05-15)
+    o    minor bug fixes
+    o    optional arguments added to plot.artfima()
+    o    seriesa, ogden
+    o    functionality improvements to bestModels()

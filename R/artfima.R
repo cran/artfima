@@ -1,7 +1,21 @@
 artfima <-
 function(z, glp=c("ARTFIMA", "ARFIMA", "ARIMA"), arimaOrder=c(0,0,0), 
-         likAlg=c("exact","Whittle"), fixd=NULL) {
+         likAlg=c("exact","Whittle"), fixd=NULL, b0=NULL, lambdaMax = 3, 
+         dMax = 10) {
+#
+#######FIRST SECTION: set up for second section
+  #
   #option fixd!=NULL only for ARTFIMA
+  #the following are important "hyper-parameter" settings only for ARTFIMA
+  # ignored for ARFIMA and ARIMA:
+  #dMax <- 10 #abs(dHat) constrained to be less than dMax
+  #lambdaMax <- 3 #max possible value for lambda estimate
+  lambdaMin <- 0.000001 #min possible. This is fixed.
+  #Generally you don't want to change this since it may result in numerical
+  # inaccuracies. Only makes sense to consider changing these settings when
+  # estimate has converged to boundary.
+  #Note: because we reset for ARFIMA, we reset both these to dHi, dLo, etc in
+  #the code a few lines below! Sorry for the confusion but is for the best!!
   #
   optAlg <- "None"
   constant <- TRUE
@@ -15,20 +29,22 @@ function(z, glp=c("ARTFIMA", "ARFIMA", "ARIMA"), arimaOrder=c(0,0,0),
   q <- arimaOrder[3]
   glpOrder <-switch(glp, "ARTFIMA"=2, "ARFIMA"=1, "ARIMA"=0)
   #fixd: must be null or numeric <2 and >=-0.5
+  #number of additional parameters, 0 for ARMA, 1 for ARFIMA, 2 for ARTFIMA
+  #   except when fixd is not NULL then it is glpOrder-1, for 
+  glpAdd <- glpOrder-ifelse(is.null(fixd), 0, 1)
+#
+  stopifnot(is.null(b0) || is.null(fixd)) #b0 only available when fixd=NULL
   stopifnot(is.null(fixd)||(is.numeric(fixd)&&fixd<=2&&fixd>=-0.5)) 
   stopifnot(all(arimaOrder>=0))
   stopifnot(!(is.numeric(fixd)&&glpOrder!=2))
-  #number of additional parameters, 0 for ARMA, 1 for ARFIMA, 2 for ARTFIMA
-  #   except when fixd is not NULL then it is 1
-  glpAdd <- glpOrder-ifelse(is.null(fixd), 0, 1)
   is.wholenumber <- function(x) abs(x - round(x)) < .Machine$double.eps^0.5
   stopifnot(is.wholenumber(p), is.wholenumber(d0), is.wholenumber(q))
 #
 #upper and lower limits: used with penalty method optimization.
 #Remark: convergence may be a problem with more liberal limits - be careful
-  lambdaLo <- 0.0001
-  lambdaHi <- 5 #(could be a little larger)
-  dHi <- 4 #ARTFIMA limit (could be a little larger)
+  lambdaLo <- lambdaMin
+  lambdaHi <- lambdaMax #(could be a little larger)
+  dHi <- dMax #ARTFIMA limit (could be a little larger)
   dfHi <- 0.49 #ARFIMA limit
   #lower and upper limits with "L-BFGS-B". Useful sometimes!
   if (glp=="ARTFIMA") {
@@ -57,10 +73,12 @@ function(z, glp=c("ARTFIMA", "ARFIMA", "ARIMA"), arimaOrder=c(0,0,0),
 #initialization
   nbeta <- p+q+glpAdd #adjusted for fixd
   binit <- numeric(nbeta)
+  stopifnot(is.null(b0) || length(b0)==nbeta) #b0 must be right length
 #Whittle method is fast because this is only done once
   if (likAlg=="Whittle") {
     Ip <- Periodogram(w)
   }
+#null model and penalty
   nullModelLoglikelihood <- (-n/2)*log(sum(w^2)/n)
   entropyPenalty <-  switch(likAlg,
       exact=-nullModelLoglikelihood,
@@ -72,7 +90,7 @@ function(z, glp=c("ARTFIMA", "ARFIMA", "ARIMA"), arimaOrder=c(0,0,0),
 #note - ***parameters passed using lexical scoping***
 #also tacvf r is exported to arfima environment
   count <- 0
-  Entropy<-function(beta) {
+  Entropy<-function(beta) { #begin Entropy() 
 #in the optimization, put lambda, d, phi, theta
     phi<-theta<-lambda <- d <- numeric(0)
     r <- NA
@@ -81,20 +99,20 @@ function(z, glp=c("ARTFIMA", "ARFIMA", "ARIMA"), arimaOrder=c(0,0,0),
       if (is.null(fixd)) { #full ARTFIMA
         d <- beta[1]
         lambda <- beta[2]
-        if (abs(d)>dHi || lambda>lambdaHi || lambda < 0.000001) {
+        if (abs(d)>dHi || lambda>lambdaHi || lambda < lambdaLo) {
           return(entropyPenalty)
         }
       } else { #fixd used, constrained ARTFIMA
         d <- fixd
         lambda <- beta[1]
-        if (lambda>lambdaHi || lambda < 0.000001) {
+        if (lambda>lambdaHi || lambda < lambdaLo) {
           return(entropyPenalty)
         }
       }
     } else { #ARFIMA
       if (glpOrder==1) {
         d <- beta[1]
-        if (abs(d) >= 0.5) {
+        if (abs(d) >= dfHi) {
           return(entropyPenalty)
         }
       } 
@@ -109,7 +127,7 @@ function(z, glp=c("ARTFIMA", "ARFIMA", "ARIMA"), arimaOrder=c(0,0,0),
     }
 #exact
     if (likAlg=="exact") {
-    r <- try(tacvfARTFIMA(d=d, lambda=lambda, phi = phi, theta = theta, 
+    r <- try(artfimaTACVF(d=d, lambda=lambda, phi = phi, theta = theta, 
                         maxlag = n-1))
     if (!is.numeric(r)) {
       negLL <- entropyPenalty
@@ -136,91 +154,140 @@ function(z, glp=c("ARTFIMA", "ARFIMA", "ARIMA"), arimaOrder=c(0,0,0),
 #
 #trace=6 for full output
   trace <- 0
+  #
+#####
+#####SECOND SECTION: determining the parameter estimates
+#
 #Brent for ARTFIMA(0,0,0) with fixd (only lambda estimated)
-  if (length(binit)==1 && is.numeric(fixd)) {
+  if (length(binit)==1 && is.numeric(fixd) && glpOrder==2) {
     optAlg <- "Brent"
     binit[1] <- 0.02 #initial value for lambda in constrained model
     ans<-optim(par=binit, fn=Entropy, method="Brent", upper=lambdaHi, 
                lower=lambdaLo, control=list(trace=trace), hessian=TRUE)
-  } else { #not constrained model##
-#we use "BFGS" with penalty as first choice, followed by others if needed
-    if (length(binit) > 0) { #non-null model
-      if(glpOrder==2) {
-        binit[1] <- 0.3
-        binit[2] <- 0.025
-      } else {
-        if(glpOrder==1) {
-          binit[1] <- 0.2
+  } 
+  #nbeta > 0
+  else {
+    #BEGIN: call opt()
+    if (length(binit) > 0) {
+      #we use "BFGS" with penalty as first choice, followed by others if needed
+      #BEGIN: initialization
+      if (length(b0) == 0){
+        if (length(binit) > 0) { #non-null model
+          if(glpOrder==2) {
+            if (is.numeric(fixd)) {
+              binit[1] <- 0.025 #lambda
+            } else {
+              binit[1] <- 0.3    #d
+              binit[2] <- 0.025  #lambda
+            }
+          } else {
+            if(glpOrder==1) {
+              binit[1] <- 0.2 #d
+            }
+          }
+          if (p > 0) {
+            phiInit <- ARToPacf(rep(c(0.1, -0.1), p)[1:p])
+            binit[glpAdd+(1:p)] <- phiInit
+          }
+          if (q > 0) {
+            thetaInit <- ARToPacf(rep(c(0.1, -0.1), q)[1:q])
+            binit[glpAdd+p+(1:q)] <-thetaInit
+          }
+          
+        } else {
+          binit <- b0 #special intialization
         }
-      }
-      if (p > 0) {
-        phiInit <- ARToPacf(rep(c(0.1, -0.1), p)[1:p])
-        binit[glpOrder+(1:p)] <- phiInit
-      }
-      if (q > 0) {
-        thetaInit <- ARToPacf(rep(c(0.1, -0.1), q)[1:q])
-        binit[glpOrder+p+(1:q)] <-thetaInit
-      }
+      }  #END: initialization
+      #default is "BFGS" but we try others if there is a problem
       optAlg <- "BFGS"
       ans <- try(optim(par=binit, fn=Entropy, method="BFGS", 
-                   control=list(trace=trace, maxit=500), hessian=TRUE),
+                       control=list(trace=trace, maxit=500), hessian=TRUE),
                  silent=TRUE)
+      #try "L-BFGS-U" if error
       if(class(ans)=="try-error" || ans$convergence>0) {
         optAlg <- "L-BFGS-B"
         ans <- try(optim(par=binit, fn=Entropy, method="L-BFGS-B", lower=blo, 
-                upper=bhi, control=list(trace=trace, maxit=500), hessian=TRUE),
+                         upper=bhi, control=list(trace=trace, maxit=500), hessian=TRUE),
                    silent=TRUE)
       }
+      #try CG if error
       if(class(ans)=="try-error" || ans$convergence>0) {
         optAlg <- "CG"
         ans <- try(optim(par=binit, fn=Entropy, method="CG", 
-                        control=list(trace=trace, maxit=500), hessian=TRUE),
+                         control=list(trace=trace, maxit=500), hessian=TRUE),
                    silent=TRUE)
       }
+      #try Nelder-Mead if error
       if(class(ans)=="try-error" || ans$convergence>0) {
         optAlg <- "Nelder-Mead"
         ans <- try(optim(par=binit, fn=Entropy, method="Nelder-Mead", 
                          control=list(trace=trace, maxit=500), hessian=TRUE),
                    silent=TRUE)
       }
-    } else {#gracefully exit with null model when length(binit) = 0
-      ans <- NULL
-      ans$value <- nullModelLoglikelihood
-      ans$hessian <- ans$par <- numeric(0)
-      ans$convergence <- 0
+      #finished with optim() else if length(binit) = 0, null case
+      } else {
+      #at present we only allow all parameters null
+        ans <- NULL
+        r <- try(artfimaTACVF(d=numeric(0), lambda=numeric(0), phi = numeric(0), 
+                            theta = numeric(0), maxlag = n-1))
+        if (!is.numeric(r)) {
+          negLL <- entropyPenalty
+        } else {
+          negLL <- try(-DLLoglikelihood(r, w), silent=TRUE)
+        }
+        ans$value <- negLL
+        ans$hessian <- ans$par <- numeric(0)
+        ans$convergence <- 0
+      }
     }
-  }
+  #
+  #THIRD SECTION: wrapping up
   negLL <- ans$value
   bHat <- ans$par
   lambdaHat <- dHat <- phiHat <- thetaHat <- numeric(0)
+#BEGIN: get dHat ...
+#get dHat and lambdaHat and test for boundary estimates
   onBoundary <- FALSE
-  if (glpOrder > 0) dHat <- bHat[glpOrder]
-  if (glpOrder == 1 && abs(dHat) > dfHi) onBoundary <- TRUE
-  if (glpOrder==2) {
-  if (is.null(fixd)) {
-    dHat <- bHat[1]
-    lambdaHat <- bHat[2]
-    } else {
-      dHat <- fixd
-      lambdaHat <- bHat[1]
-    }
-    if (lambdaHat>=lambdaHi || lambdaHat <= lambdaLo) onBoundary <- TRUE
-    if (abs(dHat) >= dHi) onBoundary <- TRUE
+  if (glpOrder > 0)  {
+    dHat <- bHat[glpOrder]
   }
-  if (p > 0) phiHat <- PacfToAR(bHat[(1+glpAdd):(p+glpAdd)])
-  if (q > 0) thetaHat <- PacfToAR(bHat[(p+1+glpAdd):(p+q+glpAdd)])
-  rHat <- tacvfARTFIMA(d=dHat, lambda=lambdaHat, 
+  if (glpOrder == 1 && abs(abs(dHat)-dfHi)<0.01) {
+    onBoundary <- TRUE
+  }
+  if (glpOrder==2) {
+    if (is.null(fixd)) {
+      dHat <- bHat[1]
+      lambdaHat <- bHat[2]
+      } else {
+        dHat <- fixd
+        lambdaHat <- bHat[1]
+      }
+#only about upper boundary for lambda
+    distBoundary = min(c(abs(lambdaHi-lambdaHat), abs(dHat-dHi)))
+    if (distBoundary < 0.01) {
+      onBoundary <- TRUE
+    }
+  }#end glpOrder==2
+#END: get dHat ...
+#
+  if (p > 0) {
+    phiHat <- PacfToAR(bHat[(1+glpAdd):(p+glpAdd)])
+  }
+  if (q > 0) {
+    thetaHat <- PacfToAR(bHat[(p+1+glpAdd):(p+q+glpAdd)])
+  }
+  rHat <- artfimaTACVF(d=dHat, lambda=lambdaHat, 
                    phi = phiHat, theta = thetaHat, maxlag = n-1)
   convergence <- ans$convergence
 #since Entropy is used, Hessian is pd
   Hinv<-try(solve(ans$hessian), silent=TRUE)
   if(!all(is.numeric(Hinv))) Hinv <- matrix(NA, nrow=nbeta, ncol=nbeta)
-  if(!any(is.na(Hinv))){ #next square-root diagnonal elements
+  if(!any(is.na(Hinv)) && all(diag(Hinv)>0)) { #next square-root diagnonal
     sebHat <- suppressWarnings(sqrt(diag(Hinv)))
     } else {
       sebHat<-rep(NA, nbeta)
     }
-  if (is.numeric(fixd)) sebHat <- c(sebHat[1],0,sebHat[-1])    
+  if (is.numeric(fixd)) sebHat <- c(0, sebHat) 
   rhoHat <- rHat[-1]/rHat[1]
   seMean <- sqrt(var(w)/n*(1+2*sum(1-(1:(n-1))/n*rhoHat^2))/n)
   constantHat <- mnw
@@ -237,18 +304,21 @@ function(z, glp=c("ARTFIMA", "ARFIMA", "ARIMA"), arimaOrder=c(0,0,0),
       sigmaSq <- NA
     }
   if (likAlg=="Whittle") { #adjust sebHat
-    if (is.numeric(sebHat)&&sigmaSq>=0) {
+    if (identical(is.numeric(sebHat)&&sigmaSq>=0, TRUE)) {
         sebHat <- sqrt(sigmaSq)*sebHat/sqrt(n)
     } else {
-        sebHat <- NA
+        sebHat <- rep(NA, nbeta)
     }
   }
 #
   snr <- (varw-sigmaSq)/sigmaSq
+  K <- nbeta
+  aic <- (-2)*LL + 2*(K+2)
+  bic <- (-2)*LL + (K+2)*log(length(w))
   out<-list(dHat=dHat, lambdaHat=lambdaHat, phiHat=phiHat, thetaHat=thetaHat, 
             constant=constantHat, sigmaSq=sigmaSq, bHat=bHat, seMean=seMean, 
-            se=sebHat, n=n, snr=snr, likAlg=likAlg, convergence=convergence, 
-            LL=LL, constantQ=constant, glp=glp, 
+            se=sebHat, n=n, snr=snr, likAlg=likAlg, LL=LL, aic=aic, bic=bic,
+            nbeta=nbeta, convergence=convergence, glp=glp, b0=ans$par, 
             arimaOrder=arimaOrder, glpOrder=glpOrder, fixd=fixd, glpAdd=glpAdd,
             tacvf=rHat, w=w, res=res, nullModelLogLik=nullModelLoglikelihood, 
             onBoundary=onBoundary, message=ans$message, optAlg=optAlg)

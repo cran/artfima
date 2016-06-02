@@ -41,8 +41,8 @@ function(x, ...){
   }
   k <- length(est)
   LL <- x$LL
-  aic <- -2*LL + 2*k
-  bic <- -2*LL + k*log(x$n)
+  aic <- -2*LL + 2*(k+1) #add 1 for mean to agree with arima()
+  bic <- -2*LL + (k+1)*log(x$n)
   cat(paste0("log-likelihood = ", round(LL,2), ", AIC = ", round(aic,2), 
       ", BIC = ", round(bic,2)),  fill=TRUE)
   if (x$onBoundary) {

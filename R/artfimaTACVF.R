@@ -1,12 +1,12 @@
-#Source: tacvfFARMA.R
+#Source: artfimaTACVF.R
 #autocovariance for stationary ARTFIMA
 #
-"tacvfARTFIMA"   <-  
+"artfimaTACVF"   <-  
   function(d=numeric(0), lambda=numeric(0), phi = numeric(0), 
            theta = numeric(0), maxlag, sigma2 = 1)
   {
     #**WARNING**:assumes phi and theta in admissible region!!
-    #use invertibleQ(phi) and invertibleQ(theta) prior to using tacvfARTFIMA!
+    #use invertibleQ(phi) and invertibleQ(theta) prior to using artfimaTACVF!
     ARMALength <- sum(length(phi),length(theta))
     ARTFIMALength <- ARMALength+sum(length(d), length(lambda))
     isWhiteNoise <- identical(0==sum(ARTFIMALength),TRUE)

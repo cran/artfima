@@ -1,12 +1,12 @@
-\name{tacvfARTFIMA}
-\alias{tacvfARTFIMA}
+\name{artfimaTACVF}
+\alias{artfimaTACVF}
 
 \title{Autocovariance function of ARTFIMA}
 
 \description{Theoretical autocovariance function of ARTFIMA model}
 
 \usage{
-tacvfARTFIMA(d = numeric(0), lambda = numeric(0), phi = numeric(0), 
+artfimaTACVF(d = numeric(0), lambda = numeric(0), phi = numeric(0), 
       theta = numeric(0), maxlag, sigma2 = 1)
 }
 
@@ -21,11 +21,9 @@ tacvfARTFIMA(d = numeric(0), lambda = numeric(0), phi = numeric(0),
   \item{sigma2}{innovation variance}
 }
 
-\details{TBA}
 
 \value{vector of length maxlag+1 of the specified autocovariances}
 
-\references{TBA}
 
 \author{A. I. McLeod, aimcleod@uwo.ca}
 
@@ -43,7 +41,7 @@ tacvfARTFIMA(d = numeric(0), lambda = numeric(0), phi = numeric(0),
 #
 lambda <- 0.045
 d <- 5/6
-TVarZ <- tacvfARTFIMA(d=d, lambda=lambda, maxlag=3)[1]
+TVarZ <- artfimaTACVF(d=d, lambda=lambda, maxlag=3)[1]
 TVarZ
 n <- 256
 set.seed(4337751)

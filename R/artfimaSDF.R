@@ -4,7 +4,7 @@
 #  variance equals 1.0.
 #
 artfimaSDF <-function(n=100, d=0, lambda=0, phi=numeric(0), theta=numeric(0), 
-                     obj=NULL, plot=c("log-log", "log", "none")) {
+                     obj=NULL, plot=c("loglog", "log", "none")) {
   plot <-  match.arg(plot)
   if ("artfima" %in% class(obj)) {
     d <- obj$dHat

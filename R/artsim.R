@@ -9,6 +9,6 @@ artsim <- function(n=100, d=0, lambda=0, phi=numeric(0),
       phi <- obj$phi
       theta <- obj$theta
     }
-  r <- tacvfARTFIMA(d=d, lambda=lambda, phi=phi, theta=theta, maxlag=n-1)
+  r <- artfimaTACVF(d=d, lambda=lambda, phi=phi, theta=theta, maxlag=n-1)
   mean+sigma2*DLSimulate(n, r)
 }

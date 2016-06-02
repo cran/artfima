@@ -1,17 +1,15 @@
 import("ltsa")
 importFrom("gsl", "hyperg_2F1", "lnpoch")
-importFrom("stats", "ARMAacf", "convolve", "fft", "rnorm", "toeplitz",
-    "nextn", "optim", "spec.pgram", "var", "is.ts", "arima.sim")
-importFrom("parallel","clusterSetRNGStream","makeCluster","clusterExport",
- "clusterEvalQ","parSapply","stopCluster")
+importFrom("stats", "ARMAacf", "convolve", "fft", "rnorm", "toeplitz", "nextn",
+      "optim", "spec.pgram", "var", "is.ts", "arima.sim", "acf", "pchisq")
 importFrom("grDevices", "rgb")
-importFrom("graphics", "lines", "plot")
+importFrom("graphics", "lines", "plot", "abline", "layout")
 export("artfima",
 "artfimaSDF",
 "print.artfima",
 "plot.artfima",
-"summary.bestmodels",
-"tacvfARTFIMA",
+"print.bestmodels",
+"artfimaTACVF",
 "artsim",
 "informationMatrixARTFIMA",
 "seARTFIMA",
@@ -23,4 +21,4 @@ export("artfima",
 
 S3method("print", "artfima")
 S3method("plot", "artfima")
-S3method("summary", "bestmodels")
+S3method("print", "bestmodels")

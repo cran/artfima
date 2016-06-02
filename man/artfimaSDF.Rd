@@ -11,7 +11,7 @@ for a stationary process.
 
 \usage{
 artfimaSDF(n = 100, d = 0, lambda = 0, phi = numeric(0), theta = numeric(0), 
-     obj = NULL, plot=c("log-log", "log", "none"))
+     obj = NULL, plot=c("loglog", "log", "none"))
 }
 
 \arguments{
@@ -53,7 +53,7 @@ vector of length floor(n/2) containing the values of the SDF at the
 \author{A. I. McLeod, aimcleod@uwo.ca}
 
 \seealso{
-\code{\link{tacvfARTFIMA}},
+\code{\link{artfimaTACVF}},
 \code{\link{Periodogram}}
 }
 

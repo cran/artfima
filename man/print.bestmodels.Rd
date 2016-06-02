@@ -1,17 +1,17 @@
-\name{summary.bestmodels}
-\alias{summary.bestmodels}
+\name{print.bestmodels}
+\alias{print.bestmodels}
 
 \title{
-Summary of Best Models
+Print Method for "bestmodels" Object
 }
 \description{
 Methods function for bestModels.
 }
 
-\usage{\method{summary}{bestmodels}(object, ...)}
+\usage{\method{print}{bestmodels}(x, ...)}
 
 \arguments{
-  \item{object}{
+  \item{x}{
 produced by bestModels
 }
   \item{\dots}{
@@ -40,9 +40,9 @@ A. I. McLeod
 }
 \examples{
 \dontrun{ #takes about 10 seconds
-ans<-bestModels(nhtemp)
+data(ogden)
+ans<-bestModels(ogden)
 ans
-summary(ans)
 }
 }
 \keyword{ ts }
