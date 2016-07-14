@@ -18,7 +18,7 @@ artfima(z, glp = c("ARTFIMA", "ARFIMA", "ARIMA"), arimaOrder = c(0, 0, 0),
   \item{glp}{general linear process type: ARTFIMA, ARFIMA or ARMA.}
   \item{arimaOrder}{c(p,D,q), where p is the AR order, D is the regular difference
   parameter and q is the MA order.}
-  \item{likAlg}{either "exact" or "Whittle"}
+  \item{likAlg}{"exact" or "Whittle" or "Whittle2"}
   \item{fixd}{only used with ARTFIMA, default setting fixd=NULL means the MLE
   for the parameter d is obtained other if fixed=d0, where d0 is a numeric
   value in the interval (-2, 2) the d parameter in ARTFIMA is fixed at this 
@@ -61,7 +61,11 @@ limits set on the parameters - only for researchers not recommended otherwise.
 print method.
 }
 
-\references{TBA}
+\references{
+McLeod, A.I., Yu, Hao and Krougly, Z. (2007).  
+Algorithms for Linear Time Series Analysis: With R Package.  
+Journal of Statistical Software  23/5 1-26.
+}  
 
 \author{A. I. McLeod, aimcleod@uwo.ca}
 

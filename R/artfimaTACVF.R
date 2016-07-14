@@ -3,8 +3,17 @@
 #
 "artfimaTACVF"   <-  
   function(d=numeric(0), lambda=numeric(0), phi = numeric(0), 
-           theta = numeric(0), maxlag, sigma2 = 1)
+           theta = numeric(0), maxlag, sigma2 = 1, obj=NULL)
   {
+    if (!is.null(obj)) {
+      if ("artfima" == class(obj)) {
+        d <- obj$dHat
+        lambda <- obj$lambdaHat
+        phi <- obj$phiHat
+        theta <- obj$thetaHat
+        sigma2 <- obj$sigmaSq
+      }
+    }  
     #**WARNING**:assumes phi and theta in admissible region!!
     #use invertibleQ(phi) and invertibleQ(theta) prior to using artfimaTACVF!
     ARMALength <- sum(length(phi),length(theta))
@@ -37,7 +46,12 @@ tacvfFI <-
     if (abs(d)<1e-8) return(c(1,rep(0,maxlag)))
     k <- 0:maxlag
     if (d>0) {
-      A <- hyperg_2F1(d,d + k,1 + k,exp(-2*lambda))
+      exL <- min(exp(-2*lambda), 0.99)
+      A <- hyperg_2F1(d, d + k, 1 + k, exL)
+      #HACK - handle error with hyper_2F1() !!!!!!!!!!!!!!!!!!!!
+      if (NaN %in% A) {#check for error
+        stop("error: NaN from hyperg_2F1()in tacvfFI()")
+      }
       C <- k*lambda + lgamma(1+k)
       B <- lnpoch(d,k)
       ans <- A*exp(B-C)

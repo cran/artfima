@@ -1,7 +1,7 @@
 artfima <-
 function(z, glp=c("ARTFIMA", "ARFIMA", "ARIMA"), arimaOrder=c(0,0,0), 
-         likAlg=c("exact","Whittle"), fixd=NULL, b0=NULL, lambdaMax = 3, 
-         dMax = 10) {
+         likAlg=c("exact", "Whittle"), fixd=NULL, b0=NULL, 
+         lambdaMax = 3, dMax = 10) {
 #
 #######FIRST SECTION: set up for second section
   #
@@ -22,11 +22,17 @@ function(z, glp=c("ARTFIMA", "ARFIMA", "ARIMA"), arimaOrder=c(0,0,0),
   stopifnot(is.numeric(z) && (is.ts(z) || is.vector(z)))
   stopifnot(length(arimaOrder==3) && is.numeric(arimaOrder) 
             && all(arimaOrder>=0))
+  stopifnot(all(abs(arimaOrder-round(arimaOrder))<.Machine$double.eps^0.5))
   glp <- match.arg(glp)
   likAlg <- match.arg(likAlg)
   p <- arimaOrder[1]
   d0 <- arimaOrder[2]
   q <- arimaOrder[3]
+  if (d0 > 0) {
+    w <- diff(z, differences=d0)
+  } else {
+    w <- z
+  }
   glpOrder <-switch(glp, "ARTFIMA"=2, "ARFIMA"=1, "ARIMA"=0)
   #fixd: must be null or numeric <2 and >=-0.5
   #number of additional parameters, 0 for ARMA, 1 for ARFIMA, 2 for ARTFIMA
@@ -59,7 +65,6 @@ function(z, glp=c("ARTFIMA", "ARFIMA", "ARIMA"), arimaOrder=c(0,0,0),
     bhi <- -blo
   }
 #
-  w <- z
   mnw <- mean(w)
   if(d0 > 0) {
     w <- diff(z, differences=d0)
@@ -75,7 +80,7 @@ function(z, glp=c("ARTFIMA", "ARFIMA", "ARIMA"), arimaOrder=c(0,0,0),
   binit <- numeric(nbeta)
   stopifnot(is.null(b0) || length(b0)==nbeta) #b0 must be right length
 #Whittle method is fast because this is only done once
-  if (likAlg=="Whittle") {
+  if (likAlg%in%c("Whittle")) {
     Ip <- Periodogram(w)
   }
 #null model and penalty
@@ -136,10 +141,10 @@ function(z, glp=c("ARTFIMA", "ARFIMA", "ARIMA"), arimaOrder=c(0,0,0),
     }
     negLL <- ifelse(is.numeric(negLL), negLL, entropyPenalty)
     } else { #Whittle
-        fp <- artfimaSDF(n=n, d=d, lambda=lambda, phi=phi, theta=theta, 
+      fp <- artfimaSDF(n=n, d=d, lambda=lambda, phi=phi, theta=theta, 
                        plot="none")
-        negLL <- mean(Ip/fp)
-      }
+      negLL <- mean(Ip/fp)
+    }
 #
 #debugging...##############################
 #cat("\n ***********iter = ", count, fill=TRUE)
@@ -207,8 +212,8 @@ function(z, glp=c("ARTFIMA", "ARFIMA", "ARIMA"), arimaOrder=c(0,0,0),
       if(class(ans)=="try-error" || ans$convergence>0) {
         optAlg <- "L-BFGS-B"
         ans <- try(optim(par=binit, fn=Entropy, method="L-BFGS-B", lower=blo, 
-                         upper=bhi, control=list(trace=trace, maxit=500), hessian=TRUE),
-                   silent=TRUE)
+                         upper=bhi, control=list(trace=trace, maxit=500), 
+                         hessian=TRUE), silent=TRUE)
       }
       #try CG if error
       if(class(ans)=="try-error" || ans$convergence>0) {
@@ -280,7 +285,7 @@ function(z, glp=c("ARTFIMA", "ARFIMA", "ARIMA"), arimaOrder=c(0,0,0),
                    phi = phiHat, theta = thetaHat, maxlag = n-1)
   convergence <- ans$convergence
 #since Entropy is used, Hessian is pd
-  Hinv<-try(solve(ans$hessian), silent=TRUE)
+  varbeta <- Hinv<-try(solve(ans$hessian), silent=TRUE)
   if(!all(is.numeric(Hinv))) Hinv <- matrix(NA, nrow=nbeta, ncol=nbeta)
   if(!any(is.na(Hinv)) && all(diag(Hinv)>0)) { #next square-root diagnonal
     sebHat <- suppressWarnings(sqrt(diag(Hinv)))
@@ -303,11 +308,13 @@ function(z, glp=c("ARTFIMA", "ARFIMA", "ARIMA"), arimaOrder=c(0,0,0),
       LL <- NA
       sigmaSq <- NA
     }
-  if (likAlg=="Whittle") { #adjust sebHat
+  if (likAlg%in%c("Whittle")) { #adjust sebHat
     if (identical(is.numeric(sebHat)&&sigmaSq>=0, TRUE)) {
         sebHat <- sqrt(sigmaSq)*sebHat/sqrt(n)
+        varbeta <- sigmaSq*varbeta
     } else {
         sebHat <- rep(NA, nbeta)
+        varbeta <- NA
     }
   }
 #
@@ -320,8 +327,9 @@ function(z, glp=c("ARTFIMA", "ARFIMA", "ARIMA"), arimaOrder=c(0,0,0),
             se=sebHat, n=n, snr=snr, likAlg=likAlg, LL=LL, aic=aic, bic=bic,
             nbeta=nbeta, convergence=convergence, glp=glp, b0=ans$par, 
             arimaOrder=arimaOrder, glpOrder=glpOrder, fixd=fixd, glpAdd=glpAdd,
-            tacvf=rHat, w=w, res=res, nullModelLogLik=nullModelLoglikelihood, 
-            onBoundary=onBoundary, message=ans$message, optAlg=optAlg)
+            tacvf=rHat, z=z, res=res, nullModelLogLik=nullModelLoglikelihood, 
+            onBoundary=onBoundary, message=ans$message, optAlg=optAlg, 
+            varbeta = varbeta, hessian=ans$hessian)
  class(out) <- "artfima"
  out
 }

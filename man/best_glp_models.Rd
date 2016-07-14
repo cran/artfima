@@ -9,7 +9,7 @@ This function is used by bestModels
 }
 \usage{
 best_glp_models(z, glp = c("ARTFIMA", "ARFIMA", "ARIMA"), p = 2, q = 2, 
-   likAlg = c("exact", "Whittle"), ...)
+   likAlg = c("exact", "Whittle"), d=0, ...)
 }
 
 \arguments{
@@ -28,6 +28,9 @@ maximum order of MA component
   \item{likAlg}{
    likAlg = c("exact", "Whittle"))
 either "exact" or "Whittle"
+}
+  \item{d}{
+regular integer differencing parameter
 }
   \item{...}{optional arguments for artfima such as lambdaMax}
 }

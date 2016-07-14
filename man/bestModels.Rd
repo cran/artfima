@@ -8,8 +8,8 @@ various p=0,1,..., and q=0,1,... and the best models according to the BIC
 criterion are selected.}
 
 \usage{
-bestModels(z, parMax = 4, nbest = 5, likAlg = c("exact", "Whittle"), 
-     ...)
+bestModels(z, parMax = 4, nbest = 4, likAlg = c("exact", "Whittle"), 
+     d=0, ...)
 }
 
 \arguments{
@@ -25,6 +25,9 @@ number of models in selection
 }
   \item{likAlg}{
 likelihood method to use
+}
+  \item{d}{
+regular differencing parameter indicating the number of times to difference
 }
 
   \item{...}{optional arguments for artfima such as lambdaMax}

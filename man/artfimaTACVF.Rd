@@ -7,7 +7,7 @@
 
 \usage{
 artfimaTACVF(d = numeric(0), lambda = numeric(0), phi = numeric(0), 
-      theta = numeric(0), maxlag, sigma2 = 1)
+      theta = numeric(0), maxlag, sigma2 = 1, obj = NULL)
 }
 
 \arguments{
@@ -19,6 +19,7 @@ artfimaTACVF(d = numeric(0), lambda = numeric(0), phi = numeric(0),
   \item{theta}{MA coefficients, Box-Jenkins definition}
   \item{maxlag}{maxlag+1 lags computed corresponding to 0,1,...,maxlag}
   \item{sigma2}{innovation variance}
+  \item{obj}{output from artfima function}
 }
 
 

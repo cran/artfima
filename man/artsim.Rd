@@ -49,6 +49,12 @@ vector of length n, the simulated time series
 A. I. McLeod, aimcleod@uwo.ca
 }
 
+\references{
+McLeod, A.I., Yu, Hao and Krougly, Z. (2007).  
+Algorithms for Linear Time Series Analysis: With R Package.  
+Journal of Statistical Software  23/5 1-26.
+}  
+
 \examples{
 z <- artsim(5000, d=5/6, lambda=0.045)
 var(z)

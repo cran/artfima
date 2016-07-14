@@ -2,7 +2,7 @@
 #includes functions: best_glp_models, best_models_serial, best_models_parll,
 # KEval
 Kbest_glp_models <- function(z, glp = c("ARTFIMA", "ARFIMA", "ARIMA"), parMax=4, 
-                            likAlg = c("exact", "Whittle"), ...) {
+                            likAlg = c("exact", "Whittle"), d = 0, ...) {
 #ranked AIC/BIC glp models with K parameters
   stopifnot(is.numeric(z))
   stopifnot(length(z)>=50)
@@ -23,7 +23,7 @@ Kbest_glp_models <- function(z, glp = c("ARTFIMA", "ARFIMA", "ARIMA"), parMax=4,
       if ( glpOrder+ps[i]+qs[j] > parMax ) {
         next
       }
-      LL_model[i,j] <- artfima(z, glp=glp, arimaOrder=c(ps[i], 0, qs[j]),
+      LL_model[i,j] <- artfima(z, glp=glp, arimaOrder=c(ps[i], d, qs[j]),
                                likAlg=likAlg, ...)$LL
       aicPenalty[i,j] <- 2*(ps[i]+qs[j]+glpOrder+2) #add 2. Cf arima()
       bicPenalty[i,j] <- log(length(z))*(ps[i]+qs[j]+glpOrder+2)
@@ -53,11 +53,14 @@ Kbest_glp_models <- function(z, glp = c("ARTFIMA", "ARFIMA", "ARIMA"), parMax=4,
   ans
 }
 
-best_models_serial <- function(z, parMax=4, nbest=5, 
-            likAlg = c("exact", "Whittle"), plausibilityQ=TRUE, ...) {
-  outARIMA <- Kbest_glp_models(z, glp="ARIMA", parMax=parMax, likAlg=likAlg)
-  outARFIMA <- Kbest_glp_models(z, glp="ARFIMA", parMax=parMax, likAlg=likAlg)
-  outARTFIMA <- Kbest_glp_models(z, glp="ARTFIMA", parMax=parMax, likAlg=likAlg)
+best_models_serial <- function(z, parMax=4, nbest=4, 
+            likAlg = c("exact", "Whittle"), plausibilityQ=TRUE, d=0, ...) {
+  outARIMA <- Kbest_glp_models(z, glp="ARIMA", parMax=parMax, 
+                              likAlg = likAlg, d = d)
+  outARFIMA <- Kbest_glp_models(z, glp="ARFIMA", parMax=parMax, 
+                              likAlg = likAlg, d = d)
+  outARTFIMA <- Kbest_glp_models(z, glp="ARTFIMA", parMax=parMax, 
+                              likAlg = likAlg, d = d)
   #
   aics <- c(as.vector(outARIMA$aic$aic), as.vector(outARFIMA$aic$aic),
             as.vector(outARTFIMA$aic$aic))
@@ -66,15 +69,15 @@ best_models_serial <- function(z, parMax=4, nbest=5,
   p1 <- nrow(outARIMA$bic$bic)
   q1 <- ncol(outARIMA$bic$bic)
   armaLab1 <- as.vector(outer(0:(p1-1), 0:(q1-1), FUN=function(x,y) 
-    paste0("ARIMA(", x, ",0,", y, ")")))
+    paste0("ARIMA(",  x,",",d,",",y, ")")))
   p1 <- nrow(outARFIMA$bic$bic)
   q1 <- ncol(outARFIMA$bic$bic)
   armaLab2 <- as.vector(outer(0:(p1-1), 0:(q1-1), FUN=function(x,y) 
-    paste0("ARFIMA(", x, ",0,", y, ")")))
+    paste0("ARFIMA(", x,",",d,",",y, ")" )))
   p1 <- nrow(outARTFIMA$bic$bic)
   q1 <- ncol(outARTFIMA$bic$bic)
   armaLab3 <- as.vector(outer(0:(p1-1), 0:(q1-1), FUN=function(x,y) 
-    paste0("ARTFIMA(", x, ",0,", y, ")")))
+    paste0("ARTFIMA(", x,",",d,",",y, ")")))
   armaLab <- c(armaLab1, armaLab2, armaLab3)
   ind <- order(aics)
   aics <- aics[ind]
@@ -92,15 +95,15 @@ best_models_serial <- function(z, parMax=4, nbest=5,
   ans 
 }
 
-bestModels <- function(z, parMax = 4, nbest=5, likAlg = c("exact", "Whittle"), 
-                        ...) {
+bestModels <- function(z, parMax = 4, nbest=4, likAlg = c("exact", "Whittle"), 
+                        d = 0, ...) {
   stopifnot(is.numeric(z))
   stopifnot(length(z)>=50)
-  best_models_serial(z, parMax=parMax, nbest=nbest, likAlg=likAlg, ...)  
+  best_models_serial(z, parMax=parMax, nbest=nbest, likAlg = likAlg, d = d, ...)  
 }
 
 best_glp_models <- function(z, glp = c("ARTFIMA", "ARFIMA", "ARIMA"), p=2, q=2, 
-                            likAlg = c("exact", "Whittle"), ...) {
+                            likAlg = c("exact", "Whittle"), d = 0, ...) {
   stopifnot(p>0 || q>0)
   stopifnot(is.numeric(z))
   stopifnot(length(z)>=50)
@@ -116,7 +119,7 @@ best_glp_models <- function(z, glp = c("ARTFIMA", "ARFIMA", "ARIMA"), p=2, q=2,
   glpOrder <-switch(glp, "ARTFIMA"=2, "ARFIMA"=1, "ARIMA"=0)
   for (i in 1:(p+1)) {
     for (j in 1:(q+1)) {
-      LL_model[i,j] <- artfima(z, glp=glp, arimaOrder=c(ps[i], 0, qs[j]),
+      LL_model[i,j] <- artfima(z, glp=glp, arimaOrder=c(ps[i], d, qs[j]),
                                likAlg=likAlg, ...)$LL
       aicPenalty[i,j] <- 2*(ps[i]+qs[j]+glpOrder+2) #add 2. Cf arima()
       bicPenalty[i,j] <- log(length(z))*(ps[i]+qs[j]+glpOrder+2)

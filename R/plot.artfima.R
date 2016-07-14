@@ -42,7 +42,7 @@ plot.artfima <- function(x, which=c("all","logsdf", "loglogsdf", "res"),
     } else {
       subTitle <- ""
     }
-    w <- x$w
+    w <- x$z
     n <- length(w)
     Ip <- Periodogram(w)
     fr <- (1/n)*(1:length(Ip))

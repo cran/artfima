@@ -22,3 +22,8 @@ CHANGES IN 'artfima' VERSION 1.4 (2016-05-15)
     o    optional arguments added to plot.artfima()
     o    seriesa, ogden
     o    functionality improvements to bestModels()
+CHANGES IN 'artfima' VERSION 1.5 (2016-06-28)
+    o    minor bug fixes
+    o    predict.artfima
+    o    bev, nilemin
+

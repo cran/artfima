@@ -44,6 +44,24 @@ Water Resources Research 14, 491-516.
 \examples{
 data(eaglecol)
 plot(eaglecol)
+\dontrun{#confidence ellipse
+library("ellipse") #needs this package!
+ansTFD <- artfima(eaglecol)
+v <- ansTFD$varbeta
+bHat <- c(ansTFD$dHat, ansTFD$lambdaHat)
+xy <- ellipse(v, centre=bHat, level=0.9)
+plot(xy, type="l", lwd=2, xlab=expression(delta), ylab=expression(lambda))
+points(matrix(bHat,ncol=2), pch=16, cex=3, col="blue")
+#setwd("D:/DropBox/R/2016/artfima/Explore_ts_data/eaglecol")
+#postscript(file="eaglecolCI.eps")
+#plot(xy, type="l", lwd=2, xlab=expression(delta), ylab=expression(lambda))
+#points(matrix(bHat,ncol=2), pch=16, cex=3, col="blue")
+#graphics.off()
+}
+\dontrun{#forecast comparison
+
+}
+
 }
 \keyword{datasets}
 
